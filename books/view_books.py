@@ -1,70 +1,53 @@
-import json
-from datetime import datetime, date
-
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from django.shortcuts import get_object_or_404
+from rest_framework import status
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 
 from books.models import Book
-from books.serializers import BookListSerializer
-from books.validate.validate_create_book import vaidate_create_book
-
-# Create your views here.
-
-def get_request_data(request):
-    if request.content_type and "application/json" in request.content_type:
-        try:
-            return json.loads(request.body.decode("utf-8") or "{}")
-        except json.JSONDecodeError:
-            return None
-    return request.POST.dict()
+from books.serializers import BookSerializer
 
 
-def parse_published_date(value):
-    if not value:
-        return None
+@api_view(["GET", "POST"])
+def book_list(request):
+    if request.method == "GET":
+        queryset = Book.objects.all().order_by("id")
+        serializer = BookSerializer(queryset, many=True)
+        return Response({"books": serializer.data})
 
-    if isinstance(value, date):
-        return value
+    serializer = BookSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(
+            {
+                "message": "Book created successfully",
+                "book": serializer.data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
-    try:
-        return date.fromisoformat(value)
-    except ValueError:
-        return None
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@csrf_exempt
-def books(request):
-    data = get_request_data(request)
-    if data is None:
-        return JsonResponse({"error": "Invalid JSON body"}, status=400)
+@api_view(["GET", "PUT", "DELETE"])
+def book_detail(request, pk):
+    book = get_object_or_404(Book, pk=pk)
 
     if request.method == "GET":
-        book_id = request.GET.get("id")
-        if book_id:
-            try:
-                book = Book.objects.get(id=book_id)
-            except Book.DoesNotExist:
-                return JsonResponse({"error": "Book not found"}, status=404)
-            return JsonResponse({"book": BookListSerializer(book).data})
+        serializer = BookSerializer(book)
+        return Response({"book": serializer.data})
 
-        queryset = Book.objects.all()
-        data_books = BookListSerializer(queryset, many=True)
-        return JsonResponse({"books": data_books.data})
+    if request.method == "PUT":
+        serializer = BookSerializer(book, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {
+                    "message": "Book updated successfully",
+                    "book": serializer.data,
+                }
+            )
 
-    if request.method == "POST":
-        errors = vaidate_create_book(data)
-        if errors:
-            return JsonResponse(errors, status=400)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        title = data.get("title")
-        author = data.get("author")
-        published_date = parse_published_date(data.get("published_date")) or datetime.now().date()
-
-        book = Book.objects.create(
-            title=title,
-            author=author,
-            published_date=published_date,
-        )
-        return JsonResponse(
-            {"message": "Book created successfully"},
-        )
+    book.delete()
+    return Response(status=status.HTTP_204_NO_CONTENT)
