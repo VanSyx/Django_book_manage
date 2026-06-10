@@ -3,7 +3,9 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+from books.filters import filter_books
 from books.models import Book
+from books.pagination import BookPagination
 from books.serializers import BookSerializer
 
 
@@ -11,8 +13,12 @@ from books.serializers import BookSerializer
 def book_list(request):
     if request.method == "GET":
         queryset = Book.objects.all().order_by("id")
-        serializer = BookSerializer(queryset, many=True)
-        return Response({"books": serializer.data})
+        queryset = filter_books(queryset, request.query_params)
+
+        paginator = BookPagination()
+        page = paginator.paginate_queryset(queryset, request)
+        serializer = BookSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
     serializer = BookSerializer(data=request.data)
     if serializer.is_valid():
