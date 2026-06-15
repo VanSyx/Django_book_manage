@@ -1,42 +1,65 @@
-# Book Manage
+# Django Book Manage
 
-Dự án Django `book_manage` là ứng dụng quản lý sách đơn giản.
+Book management application with a Django REST API and a separate frontend
+source directory.
 
-## Tổng quan
+## Project structure
 
-- Django 5.2
-- REST framework được dùng cho serializer và class-based view
+```text
+backend/
+  book_manage/        Django project settings and root URLs
+  books/              Book model, API, filters, pagination, and tests
+  manage.py
+  requirements.txt
+frontend/
+  templates/          Django-rendered Home page
+  static/             Home page CSS and JavaScript
+screenshots/
+  home-book-list.png
+```
 
-## Yêu cầu
+The frontend and backend are separated by directory, while Django still serves
+the Home page and static assets. All frontend CRUD operations call the REST API.
 
-- Python 3.10+ (hoặc phiên bản Python tương thích với Django 5.2)
-- Django
-- djangorestframework
+## Features
 
-## Cài đặt
+- List books with 20 or 100 records per page
+- Filter by title, author, price, and quantity
+- Create, view, update, and delete books
+- Home screen with pagination, filters, forms, and delete confirmation
 
-1. Kích hoạt virtual environment:
+## Setup
+
+From the repository root:
 
 ```powershell
-cd .\book_manage
 .\venv\Scripts\Activate.ps1
-```
-
-2. Cài đặt dependencies:
-
-```powershell
+cd .\backend
 pip install -r requirements.txt
-```
-
-3. Tạo và áp dụng migration:
-
-```powershell
-python manage.py makemigrations
 python manage.py migrate
+python manage.py runserver
 ```
 
-4. Khởi chạy server:
+Open:
+
+```text
+http://127.0.0.1:8000/
+```
+
+## Tests
 
 ```powershell
-python manage.py runserver
+cd .\backend
+python manage.py test
+```
+
+## API endpoints
+
+```text
+GET    /api/books/
+POST   /api/books/
+GET    /api/books/<id>/
+PUT    /api/books/<id>/
+PATCH  /api/books/<id>/
+DELETE /api/books/<id>/
 ```
