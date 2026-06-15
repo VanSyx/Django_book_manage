@@ -1,0 +1,159 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BookDesk</title>
+    <link rel="stylesheet" href="{% static 'books/css/home.css' %}">
+</head>
+<body>
+    <header class="app-header">
+        <div class="brand">
+            <span class="brand-mark" aria-hidden="true">B</span>
+            <div>
+                <h1>BookDesk</h1>
+                <p>Library inventory</p>
+            </div>
+        </div>
+        <button class="button button-primary" id="open-add-modal" type="button">
+            <span aria-hidden="true">+</span>
+            Add Book
+        </button>
+    </header>
+
+    <main class="page-shell">
+        <section class="summary-band" aria-label="Inventory summary">
+            <div class="summary-item">
+                <span>Total books</span>
+                <strong id="total-books">0</strong>
+            </div>
+            <div class="summary-item">
+                <span>Current page</span>
+                <strong id="summary-page">1</strong>
+            </div>
+            <div class="summary-item">
+                <span>Rows shown</span>
+                <strong id="rows-shown">0</strong>
+            </div>
+        </section>
+
+        <section class="workspace" aria-labelledby="inventory-title">
+            <div class="section-heading">
+                <div>
+                    <p class="eyebrow">Inventory</p>
+                    <h2 id="inventory-title">Books</h2>
+                </div>
+                <span class="status-chip" id="result-status">Loading</span>
+            </div>
+
+            <form class="filter-bar" id="filter-form">
+                <label>
+                    <span>Title</span>
+                    <input id="filter-title" name="title" type="search" placeholder="Search by title">
+                </label>
+                <label>
+                    <span>Author</span>
+                    <input id="filter-author" name="author" type="search" placeholder="Search by author">
+                </label>
+                <label class="page-size-control">
+                    <span>Rows</span>
+                    <select id="page-size" name="page_size">
+                        <option value="20">20</option>
+                        <option value="100">100</option>
+                    </select>
+                </label>
+                <div class="filter-actions">
+                    <button class="button button-secondary" type="submit">Filter</button>
+                    <button class="button button-quiet" id="clear-filters" type="button">Clear</button>
+                </div>
+            </form>
+
+            <div class="notice notice-error" id="error-message" role="alert" hidden></div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th scope="col">Title</th>
+                            <th scope="col">Author</th>
+                            <th scope="col" class="numeric">Price</th>
+                            <th scope="col" class="numeric">Quantity</th>
+                            <th scope="col" class="actions-heading">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="book-table-body"></tbody>
+                </table>
+                <div class="table-state" id="table-state">Loading books...</div>
+            </div>
+
+            <nav class="pagination" aria-label="Book list pagination">
+                <button class="button button-quiet" id="previous-page" type="button">Previous</button>
+                <span>Page <strong id="current-page">1</strong> of <strong id="total-pages">1</strong></span>
+                <button class="button button-quiet" id="next-page" type="button">Next</button>
+            </nav>
+        </section>
+    </main>
+
+    <dialog class="modal" id="book-form-modal">
+        <form class="modal-panel" id="book-form">
+            {% csrf_token %}
+            <div class="modal-header">
+                <div>
+                    <p class="eyebrow" id="form-eyebrow">New record</p>
+                    <h2 id="form-title">Add Book</h2>
+                </div>
+                <button class="icon-button close-modal" type="button" aria-label="Close">×</button>
+            </div>
+            <input id="book-id" type="hidden">
+            <div class="form-grid">
+                <label class="full-width">
+                    <span>Title</span>
+                    <input id="book-title" type="text" maxlength="200" required>
+                </label>
+                <label class="full-width">
+                    <span>Author</span>
+                    <input id="book-author" type="text" maxlength="100" required>
+                </label>
+                <label>
+                    <span>Price</span>
+                    <input id="book-price" type="number" min="0" step="0.01" required>
+                </label>
+                <label>
+                    <span>Quantity</span>
+                    <input id="book-quantity" type="number" min="0" step="1" required>
+                </label>
+            </div>
+            <div class="notice notice-error" id="form-error" role="alert" hidden></div>
+            <div class="modal-actions">
+                <button class="button button-quiet close-modal" type="button">Cancel</button>
+                <button class="button button-primary" id="save-book" type="submit">Add Book</button>
+            </div>
+        </form>
+    </dialog>
+
+    <dialog class="modal" id="detail-modal">
+        <article class="modal-panel">
+            <div class="modal-header">
+                <div>
+                    <p class="eyebrow">Book detail</p>
+                    <h2 id="detail-title">Book</h2>
+                </div>
+                <button class="icon-button close-detail" type="button" aria-label="Close">×</button>
+            </div>
+            <dl class="detail-list">
+                <div><dt>Author</dt><dd id="detail-author"></dd></div>
+                <div><dt>Price</dt><dd id="detail-price"></dd></div>
+                <div><dt>Quantity</dt><dd id="detail-quantity"></dd></div>
+                <div><dt>Published</dt><dd id="detail-date"></dd></div>
+            </dl>
+            <div class="modal-actions">
+                <button class="button button-primary close-detail" type="button">Done</button>
+            </div>
+        </article>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="{% static 'books/js/home.js' %}" defer></script>
+</body>
+</html>

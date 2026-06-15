@@ -34,7 +34,7 @@ def book_list(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@api_view(["GET", "PUT", "DELETE"])
+@api_view(["GET", "PUT", "PATCH", "DELETE"])
 def book_detail(request, pk):
     book = get_object_or_404(Book, pk=pk)
 
@@ -42,8 +42,12 @@ def book_detail(request, pk):
         serializer = BookSerializer(book)
         return Response({"book": serializer.data})
 
-    if request.method == "PUT":
-        serializer = BookSerializer(book, data=request.data)
+    if request.method in {"PUT", "PATCH"}:
+        serializer = BookSerializer(
+            book,
+            data=request.data,
+            partial=request.method == "PATCH",
+        )
         if serializer.is_valid():
             serializer.save()
             return Response(

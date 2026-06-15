@@ -21,6 +21,9 @@ def filter_books(queryset, query_params):
         except (InvalidOperation, TypeError):
             raise ValidationError({"price": "Price must be a valid number."})
 
+        if not price_value.is_finite():
+            raise ValidationError({"price": "Price must be a finite number."})
+
         if price_value < 0:
             raise ValidationError({"price": "Price must not be negative."})
 

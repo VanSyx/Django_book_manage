@@ -29,7 +29,6 @@ class BookApiTests(TestCase):
         payload = {
             "title": "The Pragmatic Programmer",
             "author": "Andrew Hunt",
-            "published_date": "1999-10-20",
             "price": "30.00",
             "quantity": 5,
         }
@@ -43,6 +42,7 @@ class BookApiTests(TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(Book.objects.count(), 2)
         self.assertEqual(response.json()["book"]["title"], payload["title"])
+        self.assertIsNotNone(response.json()["book"]["published_date"])
 
     def test_get_book_detail_returns_book(self):
         response = self.client.get(f"/api/books/{self.book.id}/")
@@ -69,6 +69,24 @@ class BookApiTests(TestCase):
         self.book.refresh_from_db()
         self.assertEqual(self.book.title, payload["title"])
         self.assertEqual(self.book.author, payload["author"])
+
+    def test_patch_book_detail_updates_selected_fields(self):
+        payload = {
+            "title": "Clean Architecture",
+            "quantity": 15,
+        }
+
+        response = self.client.patch(
+            f"/api/books/{self.book.id}/",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.book.refresh_from_db()
+        self.assertEqual(self.book.title, payload["title"])
+        self.assertEqual(self.book.quantity, payload["quantity"])
+        self.assertEqual(self.book.author, "Robert C. Martin")
 
     def test_delete_book_detail_deletes_book(self):
         response = self.client.delete(f"/api/books/{self.book.id}/")
@@ -148,8 +166,26 @@ class BookApiTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("price", response.json())
 
+    def test_get_books_rejects_non_finite_price(self):
+        for value in ("NaN", "Infinity", "-Infinity"):
+            with self.subTest(value=value):
+                response = self.client.get("/api/books/", {"price": value})
+
+                self.assertEqual(response.status_code, 400)
+                self.assertIn("price", response.json())
+
     def test_get_books_rejects_unsupported_page_size(self):
         response = self.client.get("/api/books/?page_size=50")
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("page_size", response.json())
+
+
+class HomePageTests(TestCase):
+    def test_home_page_renders_book_workspace(self):
+        response = self.client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "BookDesk")
+        self.assertContains(response, "Add Book")
+        self.assertContains(response, "Search by title")
