@@ -16,10 +16,21 @@
                 <p>Library inventory</p>
             </div>
         </div>
-        <button class="button button-primary" id="open-add-modal" type="button">
-            <span aria-hidden="true">+</span>
-            Add Book
-        </button>
+        <div class="header-actions">
+            <form class="auth-form" id="login-form">
+                <input id="login-username" name="username" type="text" placeholder="Username" autocomplete="username" required>
+                <input id="login-password" name="password" type="password" placeholder="Password" autocomplete="current-password" required>
+                <button class="button button-secondary" id="login-button" type="submit">Login</button>
+            </form>
+            <div class="auth-session" id="auth-session" hidden>
+                <span id="auth-user"></span>
+                <button class="button button-quiet" id="logout-button" type="button">Logout</button>
+            </div>
+            <button class="button button-primary" id="open-add-modal" type="button" disabled>
+                <span aria-hidden="true">+</span>
+                Add Book
+            </button>
+        </div>
     </header>
 
     <main class="page-shell">
@@ -103,7 +114,7 @@
                     <p class="eyebrow" id="form-eyebrow">New record</p>
                     <h2 id="form-title">Add Book</h2>
                 </div>
-                <button class="icon-button close-modal" type="button" aria-label="Close">×</button>
+                <button class="icon-button close-modal" type="button" aria-label="Close">&times;</button>
             </div>
             <input id="book-id" type="hidden">
             <div class="form-grid">
@@ -139,7 +150,7 @@
                     <p class="eyebrow">Book detail</p>
                     <h2 id="detail-title">Book</h2>
                 </div>
-                <button class="icon-button close-detail" type="button" aria-label="Close">×</button>
+                <button class="icon-button close-detail" type="button" aria-label="Close">&times;</button>
             </div>
             <dl class="detail-list">
                 <div><dt>Author</dt><dd id="detail-author"></dd></div>
@@ -154,6 +165,6 @@
     </dialog>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="{% static 'books/js/home.js' %}" defer></script>
+    <script type="module" src="{% static 'books/js/home.js' %}"></script>
 </body>
 </html>

@@ -3,35 +3,30 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from books.filters import filter_books
 from books.models import Book
-from books.pagination import BookPagination
 from books.serializers import BookSerializer
+from books.services import create_book, get_paginated_books, update_book
 
 
 @api_view(["GET", "POST"])
 def book_list(request):
     if request.method == "GET":
-        queryset = Book.objects.all().order_by("id")
-        queryset = filter_books(queryset, request.query_params)
+        return Response(get_paginated_books(request.query_params))
 
-        paginator = BookPagination()
-        page = paginator.paginate_queryset(queryset, request)
-        serializer = BookSerializer(page, many=True)
-        return paginator.get_paginated_response(serializer.data)
-
-    serializer = BookSerializer(data=request.data)
-    if serializer.is_valid():
-        serializer.save()
+    if not request.user.is_authenticated:
         return Response(
-            {
-                "message": "Book created successfully",
-                "book": serializer.data,
-            },
-            status=status.HTTP_201_CREATED,
+            {"detail": "Authentication credentials were not provided."},
+            status=status.HTTP_401_UNAUTHORIZED,
         )
 
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    book_data = create_book(request.data)
+    return Response(
+        {
+            "message": "Book created successfully",
+            "book": book_data,
+        },
+        status=status.HTTP_201_CREATED,
+    )
 
 
 @api_view(["GET", "PUT", "PATCH", "DELETE"])
@@ -42,22 +37,24 @@ def book_detail(request, pk):
         serializer = BookSerializer(book)
         return Response({"book": serializer.data})
 
+    if not request.user.is_authenticated:
+        return Response(
+            {"detail": "Authentication credentials were not provided."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
     if request.method in {"PUT", "PATCH"}:
-        serializer = BookSerializer(
+        book_data = update_book(
             book,
-            data=request.data,
+            request.data,
             partial=request.method == "PATCH",
         )
-        if serializer.is_valid():
-            serializer.save()
-            return Response(
-                {
-                    "message": "Book updated successfully",
-                    "book": serializer.data,
-                }
-            )
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {
+                "message": "Book updated successfully",
+                "book": book_data,
+            }
+        )
 
     book.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)

@@ -1,3 +1,23 @@
+import {
+    authStore,
+    createBook,
+    deleteBook as deleteBookRequest,
+    getBook,
+    getBooks,
+    login,
+    logout,
+    updateBook,
+} from "./api.js";
+import {
+    elements,
+    formatPrice,
+    renderBooks,
+    setAuthState,
+    setError,
+    setLoading,
+    showToast,
+} from "./render.js";
+
 const state = {
     page: 1,
     pageSize: 20,
@@ -5,87 +25,6 @@ const state = {
     author: "",
     totalPages: 1,
 };
-
-const elements = {
-    tableBody: document.querySelector("#book-table-body"),
-    tableState: document.querySelector("#table-state"),
-    errorMessage: document.querySelector("#error-message"),
-    resultStatus: document.querySelector("#result-status"),
-    totalBooks: document.querySelector("#total-books"),
-    summaryPage: document.querySelector("#summary-page"),
-    rowsShown: document.querySelector("#rows-shown"),
-    currentPage: document.querySelector("#current-page"),
-    totalPages: document.querySelector("#total-pages"),
-    previousPage: document.querySelector("#previous-page"),
-    nextPage: document.querySelector("#next-page"),
-    filterForm: document.querySelector("#filter-form"),
-    filterTitle: document.querySelector("#filter-title"),
-    filterAuthor: document.querySelector("#filter-author"),
-    pageSize: document.querySelector("#page-size"),
-    clearFilters: document.querySelector("#clear-filters"),
-    formModal: document.querySelector("#book-form-modal"),
-    bookForm: document.querySelector("#book-form"),
-    bookId: document.querySelector("#book-id"),
-    bookTitle: document.querySelector("#book-title"),
-    bookAuthor: document.querySelector("#book-author"),
-    bookPrice: document.querySelector("#book-price"),
-    bookQuantity: document.querySelector("#book-quantity"),
-    formTitle: document.querySelector("#form-title"),
-    formEyebrow: document.querySelector("#form-eyebrow"),
-    formError: document.querySelector("#form-error"),
-    saveBook: document.querySelector("#save-book"),
-    detailModal: document.querySelector("#detail-modal"),
-    detailTitle: document.querySelector("#detail-title"),
-    detailAuthor: document.querySelector("#detail-author"),
-    detailPrice: document.querySelector("#detail-price"),
-    detailQuantity: document.querySelector("#detail-quantity"),
-    detailDate: document.querySelector("#detail-date"),
-    toast: document.querySelector("#toast"),
-};
-
-function getCsrfToken() {
-    return document.querySelector("[name=csrfmiddlewaretoken]").value;
-}
-
-function formatPrice(value) {
-    return Number(value).toLocaleString("en-US", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-}
-
-function showToast(message) {
-    elements.toast.textContent = message;
-    elements.toast.classList.add("visible");
-    window.setTimeout(() => elements.toast.classList.remove("visible"), 2400);
-}
-
-function setLoading(isLoading) {
-    elements.resultStatus.textContent = isLoading ? "Loading" : "Ready";
-    elements.previousPage.disabled = isLoading || state.page <= 1;
-    elements.nextPage.disabled = isLoading || state.page >= state.totalPages;
-}
-
-function setError(message = "") {
-    elements.errorMessage.textContent = message;
-    elements.errorMessage.hidden = !message;
-}
-
-async function parseResponse(response) {
-    if (response.status === 204) {
-        return null;
-    }
-
-    const data = await response.json();
-    if (!response.ok) {
-        const message = Object.entries(data)
-            .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(" ") : errors}`)
-            .join(" ");
-        throw new Error(message || "The request could not be completed.");
-    }
-
-    return data;
-}
 
 function buildQuery() {
     const params = new URLSearchParams({
@@ -103,50 +42,17 @@ function buildQuery() {
     return params.toString();
 }
 
-function renderBooks(books) {
-    elements.tableBody.replaceChildren();
-    elements.tableState.hidden = books.length > 0;
-    elements.tableState.textContent = books.length ? "" : "No books match the current filters.";
-
-    books.forEach((book) => {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-            <td></td>
-            <td></td>
-            <td class="numeric"></td>
-            <td class="numeric"></td>
-            <td>
-                <div class="row-actions">
-                    <button class="button button-quiet" data-action="detail" type="button">Detail</button>
-                    <button class="button button-quiet" data-action="edit" type="button">Edit</button>
-                    <button class="button button-danger" data-action="delete" type="button">Delete</button>
-                </div>
-            </td>
-        `;
-
-        row.children[0].textContent = book.title;
-        row.children[1].textContent = book.author;
-        row.children[2].textContent = formatPrice(book.price);
-        row.children[3].textContent = book.quantity;
-        row.querySelectorAll("button").forEach((button) => {
-            button.dataset.bookId = book.id;
-        });
-        elements.tableBody.append(row);
-    });
-}
-
 async function loadBooks() {
-    setLoading(true);
+    setLoading(true, state);
     setError();
     elements.tableState.hidden = false;
     elements.tableState.textContent = "Loading books...";
 
     try {
-        const response = await fetch(`/api/books/?${buildQuery()}`);
-        const data = await parseResponse(response);
+        const data = await getBooks(buildQuery());
         state.totalPages = Math.max(data.total_pages, 1);
 
-        renderBooks(data.books);
+        renderBooks(data.books, Boolean(authStore.get()?.token));
         elements.totalBooks.textContent = data.count;
         elements.summaryPage.textContent = data.current_page;
         elements.rowsShown.textContent = data.books.length;
@@ -158,14 +64,8 @@ async function loadBooks() {
         elements.tableState.textContent = "Books could not be loaded.";
         setError(error.message);
     } finally {
-        setLoading(false);
+        setLoading(false, state);
     }
-}
-
-async function getBook(bookId) {
-    const response = await fetch(`/api/books/${bookId}/`);
-    const data = await parseResponse(response);
-    return data.book;
 }
 
 function openAddModal() {
@@ -225,15 +125,11 @@ async function saveBook(event) {
     };
 
     try {
-        const response = await fetch(bookId ? `/api/books/${bookId}/` : "/api/books/", {
-            method: bookId ? "PATCH" : "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "X-CSRFToken": getCsrfToken(),
-            },
-            body: JSON.stringify(payload),
-        });
-        await parseResponse(response);
+        if (bookId) {
+            await updateBook(bookId, payload);
+        } else {
+            await createBook(payload);
+        }
 
         elements.formModal.close();
         state.page = 1;
@@ -261,14 +157,42 @@ async function deleteBook(bookId) {
     }
 
     try {
-        const response = await fetch(`/api/books/${bookId}/`, {
-            method: "DELETE",
-            headers: {"X-CSRFToken": getCsrfToken()},
-        });
-        await parseResponse(response);
+        await deleteBookRequest(bookId);
         state.page = 1;
         await loadBooks();
         showToast("Book deleted.");
+    } catch (error) {
+        setError(error.message);
+    }
+}
+
+async function submitLogin(event) {
+    event.preventDefault();
+    elements.loginButton.disabled = true;
+    setError();
+
+    try {
+        const auth = await login(
+            elements.loginUsername.value.trim(),
+            elements.loginPassword.value,
+        );
+        elements.loginForm.reset();
+        setAuthState(auth);
+        await loadBooks();
+        showToast("Logged in.");
+    } catch (error) {
+        setError(error.message);
+    } finally {
+        elements.loginButton.disabled = false;
+    }
+}
+
+async function submitLogout() {
+    try {
+        await logout();
+        setAuthState(null);
+        await loadBooks();
+        showToast("Logged out.");
     } catch (error) {
         setError(error.message);
     }
@@ -313,7 +237,7 @@ elements.nextPage.addEventListener("click", () => {
 
 elements.tableBody.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-action]");
-    if (!button) {
+    if (!button || button.disabled) {
         return;
     }
 
@@ -325,7 +249,7 @@ elements.tableBody.addEventListener("click", (event) => {
     actions[button.dataset.action](button.dataset.bookId);
 });
 
-document.querySelector("#open-add-modal").addEventListener("click", openAddModal);
+elements.openAddModal.addEventListener("click", openAddModal);
 document.querySelectorAll(".close-modal").forEach((button) => {
     button.addEventListener("click", () => elements.formModal.close());
 });
@@ -333,5 +257,8 @@ document.querySelectorAll(".close-detail").forEach((button) => {
     button.addEventListener("click", () => elements.detailModal.close());
 });
 elements.bookForm.addEventListener("submit", saveBook);
+elements.loginForm.addEventListener("submit", submitLogin);
+elements.logoutButton.addEventListener("click", submitLogout);
 
+setAuthState(authStore.get());
 loadBooks();

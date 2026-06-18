@@ -47,6 +47,38 @@ button {
     border-bottom: 4px solid #dfb85c;
 }
 
+.header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.auth-form,
+.auth-session {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.auth-form input {
+    width: 150px;
+    min-height: 38px;
+    border-color: #41524b;
+}
+
+.auth-session {
+    color: #f4f7f5;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.auth-session .button-quiet {
+    color: #fff;
+    background: transparent;
+    border-color: #51635c;
+}
+
 .brand {
     min-width: 0;
     display: flex;

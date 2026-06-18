@@ -1,12 +1,19 @@
 import json
 
+from django.contrib.auth.models import User
 from django.test import TestCase
+from rest_framework.authtoken.models import Token
 
 from books.models import Book
 
 
 class BookApiTests(TestCase):
     def setUp(self):
+        self.user = User.objects.create_user(
+            username="bookadmin",
+            password="secret-pass-123",
+        )
+        self.token = Token.objects.create(user=self.user)
         self.book = Book.objects.create(
             title="Clean Code",
             author="Robert C. Martin",
@@ -14,6 +21,9 @@ class BookApiTests(TestCase):
             price="25.50",
             quantity=10,
         )
+
+    def authenticate(self):
+        self.client.defaults["HTTP_AUTHORIZATION"] = f"Token {self.token.key}"
 
     def test_get_books_returns_list(self):
         response = self.client.get("/api/books/")
@@ -26,6 +36,7 @@ class BookApiTests(TestCase):
         self.assertEqual(data["page_size"], 20)
 
     def test_post_books_creates_book(self):
+        self.authenticate()
         payload = {
             "title": "The Pragmatic Programmer",
             "author": "Andrew Hunt",
@@ -44,6 +55,23 @@ class BookApiTests(TestCase):
         self.assertEqual(response.json()["book"]["title"], payload["title"])
         self.assertIsNotNone(response.json()["book"]["published_date"])
 
+    def test_post_books_requires_token(self):
+        payload = {
+            "title": "No Token Book",
+            "author": "Anonymous",
+            "price": "9.99",
+            "quantity": 1,
+        }
+
+        response = self.client.post(
+            "/api/books/",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(Book.objects.count(), 1)
+
     def test_get_book_detail_returns_book(self):
         response = self.client.get(f"/api/books/{self.book.id}/")
 
@@ -51,6 +79,7 @@ class BookApiTests(TestCase):
         self.assertEqual(response.json()["book"]["id"], self.book.id)
 
     def test_put_book_detail_updates_book(self):
+        self.authenticate()
         payload = {
             "title": "Refactoring",
             "author": "Martin Fowler",
@@ -71,6 +100,7 @@ class BookApiTests(TestCase):
         self.assertEqual(self.book.author, payload["author"])
 
     def test_patch_book_detail_updates_selected_fields(self):
+        self.authenticate()
         payload = {
             "title": "Clean Architecture",
             "quantity": 15,
@@ -89,6 +119,7 @@ class BookApiTests(TestCase):
         self.assertEqual(self.book.author, "Robert C. Martin")
 
     def test_delete_book_detail_deletes_book(self):
+        self.authenticate()
         response = self.client.delete(f"/api/books/{self.book.id}/")
 
         self.assertEqual(response.status_code, 204)
@@ -181,6 +212,46 @@ class BookApiTests(TestCase):
         self.assertIn("page_size", response.json())
 
 
+class AuthApiTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="bookadmin",
+            password="secret-pass-123",
+        )
+
+    def test_token_endpoint_returns_token(self):
+        response = self.client.post(
+            "/api/token/",
+            data=json.dumps(
+                {
+                    "username": "bookadmin",
+                    "password": "secret-pass-123",
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("token", response.json())
+        self.assertEqual(response.json()["user"]["username"], "bookadmin")
+
+    def test_logout_deletes_token(self):
+        token = Token.objects.create(user=self.user)
+
+        response = self.client.post(
+            "/api/logout/",
+            HTTP_AUTHORIZATION=f"Token {token.key}",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Token.objects.filter(user=self.user).exists())
+
+    def test_logout_requires_token(self):
+        response = self.client.post("/api/logout/")
+
+        self.assertEqual(response.status_code, 401)
+
+
 class HomePageTests(TestCase):
     def test_home_page_renders_book_workspace(self):
         response = self.client.get("/")
@@ -188,4 +259,6 @@ class HomePageTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "BookDesk")
         self.assertContains(response, "Add Book")
+        self.assertContains(response, "Login")
+        self.assertContains(response, "Logout")
         self.assertContains(response, "Search by title")

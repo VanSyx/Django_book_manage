@@ -27,6 +27,8 @@ the Home page and static assets. All frontend CRUD operations call the REST API.
 - Filter by title, author, price, and quantity
 - Create, view, update, and delete books
 - Home screen with pagination, filters, forms, and delete confirmation
+- Token login via `POST /api/token/`
+- Logout via `POST /api/logout/`
 
 ## Setup
 
@@ -37,6 +39,7 @@ From the repository root:
 cd .\backend
 pip install -r requirements.txt
 python manage.py migrate
+python manage.py createsuperuser
 python manage.py runserver
 ```
 
@@ -62,4 +65,12 @@ GET    /api/books/<id>/
 PUT    /api/books/<id>/
 PATCH  /api/books/<id>/
 DELETE /api/books/<id>/
+POST   /api/token/
+POST   /api/logout/
+```
+
+Write operations (`POST`, `PUT`, `PATCH`, `DELETE`) require:
+
+```text
+Authorization: Token <token>
 ```
